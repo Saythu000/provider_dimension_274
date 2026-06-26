@@ -44,8 +44,18 @@ class CSVSchemaMapper:
 
             # Extract provider info from NM1[2] (1P entity = provider)
             provider_nm1 = nm1_list[2] if len(nm1_list) > 2 else {}
-            provider_id   = provider_nm1.get("identifier", "")
-            provider_name = provider_nm1.get("name", "")
+            provider_id   = provider_nm1.get("identifier") or provider_nm1.get("nm111_111") or ""
+            
+            # If entity_type_qualifier is "1" (Person), construct full name
+            entity_type = provider_nm1.get("entity_type_qualifier", "2")
+            if entity_type == "1":
+                first = provider_nm1.get("first_name", "")
+                middle = provider_nm1.get("middle_name", "")
+                last = provider_nm1.get("name", "") or provider_nm1.get("last_name", "")
+                name_parts = [p for p in [first, middle, last] if p]
+                provider_name = " ".join(name_parts)
+            else:
+                provider_name = provider_nm1.get("name", "")
             
             # Extract address info (N3 and N4 are objects, not arrays)
             addr_line1 = n3_obj.get("address_line_1", "")
