@@ -203,7 +203,34 @@ These segments build the internal structure, hierarchies, and specific medical c
 
 ---
 
-## 6. EDI 274 Multi-Level Organizational Hierarchy Structure
+## 6. Reference Tables & Data Enrichment Strategy
+
+In Stage 3 (Silver layer), the staging pipeline joins the Bronze directory record with two reference tables in your database:
+1. **`silver.ref_provider_affiliation`**: Mapped using the clinic Tax ID (`LOCATIONTIN`).
+2. **`silver.ref_credentialing`**: Mapped using the doctor NPI (`PROVIDERID`).
+
+### Why are they needed?
+* **Enriching Incomplete Files (Fallback Lookup)**: While large hospital groups submit complete files with Tier 2 (Clinic Group) names and Tier 3 (Health System) names, solo practitioners send files containing *only* their name, NPI, and Tax ID. To ensure every database record has its clinic group name, we use `ref_provider_affiliation` to look up and populate the missing descriptions based on their Tax ID.
+* **Internal Business Flags**: The `DONOTCHASE` flag (which indicates if provider credential updates are bypassed) is managed internally by your credentialing team. This information is never sent inside the raw EDI 274 file. We join `ref_credentialing` on the doctor NPI to fetch and inject this clinical status.
+
+---
+
+## 7. Ingestion Isolation (Zero Dependency on 837 Claims)
+
+This ingestion pipeline is designed to be **100% self-contained and isolated from the 837 claim ingestion process**. 
+* In a combined system, columns like provider first/middle names, billing tax identifiers, or taxonomy qualifications are sometimes populated from the 837 claims feed.
+* For this 274-only implementation, all such 837-dependent columns (such as `firstName`, `middleName`, `providerDEA`, `taxonomyCode1-5`, `hpSpecialtyCode1-5`, and `isContracted`) are projected as **`NULL`** in `dimProvider.json`:
+  ```json
+  CAST(NULL AS string) AS firstName,
+  CAST(NULL AS string) AS middleName,
+  CAST(NULL AS string) AS providerDEA,
+  ...
+  ```
+This guarantees that the 274 directory feed runs completely independently without any dependency on active claims processing.
+
+---
+
+## 8. EDI 274 Multi-Level Organizational Hierarchy Structure
 
 The EDI 274 format uses **Hierarchical Level (HL) segments** to represent organizational relationships. The `HL` segment defines the structure using:
 * `HL01` (Hierarchical ID)
@@ -275,7 +302,7 @@ PRV*PE*PXC*207Q00000X~                        <-- Doctor Taxonomy/Specialty
 
 ---
 
-## 7. How to Test in Databricks
+## 9. How to Test in Databricks
 
 1. In Databricks, pull the latest commits from the remote branch.
 2. Run the **`ddl_executor`** notebook to create schemas and tables under catalog `274`.
