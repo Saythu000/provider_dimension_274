@@ -2,18 +2,22 @@
 Provider Hierarchy Mapping Definitions — Configured for declarative JSONata mapping.
 Maps raw EDI 274 loops directly to a flat CSV structure in a 1-to-1 fashion, 
 supporting both Solo Practitioner and Multi-Level Organizational Hierarchies.
+Includes all 46 fields required by the validation schema in the exact ordinal sequence.
 """
 
 MAPPINGS = {
     "name": "Provider Hierarchy 7.12 Declarative Schema Mapping",
     "mapping_type": "only_mapped",
     "expressions": {
-        # Core Identifiers
+        # 0. TEMPLATE
         "TEMPLATE":         "'TEMPLATE'",
+        
+        # 1-3. Core Doctor Identifiers
         "PROVIDERID":       "detail.nm1[entity_identifier_code='1P'].(identifier ? identifier : nm111_111)",
         "PROVIDERLASTNAME": "detail.nm1[entity_identifier_code='1P'].(entity_type_qualifier='1' ? ($join([first_name, middle_name, name][$ != null], ' ')) : name)",
         "PROVIDERNPI":      "detail.nm1[entity_identifier_code='1P'].(identifier ? identifier : nm111_111)",
         
+        # 4-9. Core Location Fields
         "LOCATIONGROUPID":  "detail.nm1[entity_identifier_code='41'].submitter_id ? detail.nm1[entity_identifier_code='41'].submitter_id : detail.nm1[entity_identifier_code='85'].(billing_provider_id ? billing_provider_id : identifier)",
         "LOCATIONRANKING":  "1",
         "LOCATIONIDTYPE":   "detail.nm1[entity_identifier_code='1P'].entity_identifier_code",
@@ -21,25 +25,52 @@ MAPPINGS = {
         "LOCATIONDESC":     "detail.nm1[entity_identifier_code='1P'].(entity_type_qualifier='1' ? ($join([first_name, middle_name, name][$ != null], ' ')) : name)",
         "LOCATIONTIN":      "detail.ref[0].(employer_id ? employer_id : champus_id)",
         
-        # Address Details
+        # 10-14. Core Location Address Fields
         "LOCATIONADDRESS1": "detail.n3.address_line_1",
         "LOCATIONADDRESS2": "detail.n3.address_line_2",
         "LOCATIONCITY":     "detail.n4.city",
         "LOCATIONSTATE":    "detail.n4.state",
         "LOCATIONZIP":      "detail.n4.zip_code",
         
-        # Contact & Date Details
+        # 15-19. Optional / Unmapped Location Attributes
+        "COUNTYCODE":        "detail.unmapped",
         "PHONENUMBER":      "detail.per[per01='AJ' or per01='IC'].per04_04",
+        "FAXNUMBER":         "detail.unmapped",
         "CONTACTPERSON":    "detail.per[per01='AJ' or per01='IC'].per02_02",
-        "STARTDATE":        "detail.dtp[date_qualifier='007'].date_value ? detail.dtp[date_qualifier='007'].date_value : heading.bht.bht04_04",
-        "ENDDATE":          "detail.dtp[date_qualifier='008'].date_value",
+        "DONOTCHASE":        "detail.unmapped",
         
-        # Tier 2 (Clinic Group - Multi-Level Organizational Hierarchy)
+        # 20-27. Tier 2 (Clinic Group - Multi-Level Organizational Hierarchy)
+        "TIER2IDTYPE":       "detail.unmapped",
         "TIER2ID":          "detail.nm1[entity_identifier_code='85'].(billing_provider_id ? billing_provider_id : identifier)",
         "TIER2DESC":        "detail.nm1[entity_identifier_code='85'].(billing_provider_name ? billing_provider_name : name)",
         "TIER2ADDRESS1":    "detail.n3.billing_provider_address_line_1",
+        "TIER2ADDRESS2":    "detail.unmapped",
         "TIER2CITY":        "detail.n4.billing_provider_city",
         "TIER2STATE":       "detail.n4.billing_provider_state",
-        "TIER2ZIP":         "detail.n4.billing_provider_zip_code"
+        "TIER2ZIP":         "detail.n4.billing_provider_zip_code",
+        
+        # 28-35. Tier 3 (Health System - Populated via reference table join in Silver)
+        "TIER3IDTYPE":       "detail.unmapped",
+        "TIER3ID":          "detail.unmapped",
+        "TIER3DESC":        "detail.unmapped",
+        "TIER3ADDRESS1":    "detail.unmapped",
+        "TIER3ADDRESS2":    "detail.unmapped",
+        "TIER3CITY":        "detail.unmapped",
+        "TIER3STATE":       "detail.unmapped",
+        "TIER3ZIP":         "detail.unmapped",
+        
+        # 36-43. Tier 4 (State Network - Unused/Staged placeholder)
+        "TIER4IDTYPE":       "detail.unmapped",
+        "TIER4ID":          "detail.unmapped",
+        "TIER4DESC":        "detail.unmapped",
+        "TIER4ADDRESS1":    "detail.unmapped",
+        "TIER4ADDRESS2":    "detail.unmapped",
+        "TIER4CITY":        "detail.unmapped",
+        "TIER4STATE":       "detail.unmapped",
+        "TIER4ZIP":         "detail.unmapped",
+        
+        # 44-45. Relationship Dates
+        "STARTDATE":        "detail.dtp[date_qualifier='007'].date_value ? detail.dtp[date_qualifier='007'].date_value : heading.bht.bht04_04",
+        "ENDDATE":          "detail.dtp[date_qualifier='008'].date_value"
     }
 }
