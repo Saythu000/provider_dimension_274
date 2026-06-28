@@ -12,42 +12,42 @@ MAPPINGS = {
         # 0. TEMPLATE
         "TEMPLATE":         "'TEMPLATE'",
         
-        # 1-3. Core Doctor Identifiers
-        "PROVIDERID":       "detail.nm1[entity_identifier_code='1P'].(identifier ? identifier : nm111_111)",
-        "PROVIDERLASTNAME": "detail.nm1[entity_identifier_code='1P'].(entity_type_qualifier='1' ? ($join([first_name, middle_name, name][$ != null], ' ')) : name)",
-        "PROVIDERNPI":      "detail.nm1[entity_identifier_code='1P'].(identifier ? identifier : nm111_111)",
+        # 1-3. Core Doctor Identifiers (Isolate entity_type_qualifier='1' for Practitioner)
+        "PROVIDERID":       "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='1'].(identifier ? identifier : nm111_111)",
+        "PROVIDERLASTNAME": "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='1'].(entity_type_qualifier='1' ? ($join([first_name, middle_name, name][$ != null], ' ')) : name)",
+        "PROVIDERNPI":      "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='1'].(identifier ? identifier : nm111_111)",
         
         # 4-9. Core Location Fields
         "LOCATIONGROUPID":  "detail.nm1[entity_identifier_code='41'].submitter_id ? detail.nm1[entity_identifier_code='41'].submitter_id : detail.nm1[entity_identifier_code='85'].(billing_provider_id ? billing_provider_id : identifier)",
         "LOCATIONRANKING":  "1",
-        "LOCATIONIDTYPE":   "detail.nm1[entity_identifier_code='1P'].entity_identifier_code",
-        "LOCATIONID":       "detail.nm1[entity_identifier_code='1P'].(identifier ? identifier : nm111_111)",
-        "LOCATIONDESC":     "detail.nm1[entity_identifier_code='1P'].(entity_type_qualifier='1' ? ($join([first_name, middle_name, name][$ != null], ' ')) : name)",
+        "LOCATIONIDTYPE":   "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='1'].entity_identifier_code",
+        "LOCATIONID":       "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='1'].(identifier ? identifier : nm111_111)",
+        "LOCATIONDESC":     "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='1'].(entity_type_qualifier='1' ? ($join([first_name, middle_name, name][$ != null], ' ')) : name)",
         "LOCATIONTIN":      "detail.ref[0].(employer_id ? employer_id : champus_id)",
         
-        # 10-14. Core Location Address Fields
-        "LOCATIONADDRESS1": "detail.n3.address_line_1",
-        "LOCATIONADDRESS2": "detail.n3.address_line_2",
-        "LOCATIONCITY":     "detail.n4.city",
-        "LOCATIONSTATE":    "detail.n4.state",
-        "LOCATIONZIP":      "detail.n4.zip_code",
+        # 10-14. Core Location Address Fields (Filter-coalesce for practitioner office address)
+        "LOCATIONADDRESS1": "[detail.n3[address_line_2 != null].address_line_1, (detail.n3[address_line_1 != null].address_line_1)[0], detail.n3[0].billing_provider_address_line_1][$ != null][0]",
+        "LOCATIONADDRESS2": "detail.n3[address_line_2 != null].address_line_2",
+        "LOCATIONCITY":     "[(detail.n4[city != null].city)[0], detail.n4[0].billing_provider_city][$ != null][0]",
+        "LOCATIONSTATE":    "[(detail.n4[city != null].state)[0], detail.n4[0].billing_provider_state][$ != null][0]",
+        "LOCATIONZIP":      "[(detail.n4[city != null].zip_code)[0], detail.n4[0].billing_provider_zip_code][$ != null][0]",
         
         # 15-19. Optional / Unmapped Location Attributes
         "COUNTYCODE":        "detail.unmapped",
-        "PHONENUMBER":      "detail.per[per01='AJ' or per01='IC'].per04_04",
+        "PHONENUMBER":      "[(detail.per[per01='AJ' or per01='IC'].per04_04)[1], (detail.per[per01='AJ' or per01='IC'].per04_04)[0]][$ != null][0]",
         "FAXNUMBER":         "detail.unmapped",
-        "CONTACTPERSON":    "detail.per[per01='AJ' or per01='IC'].per02_02",
+        "CONTACTPERSON":    "[(detail.per[per01='AJ' or per01='IC'].per02_02)[1], (detail.per[per01='AJ' or per01='IC'].per02_02)[0]][$ != null][0]",
         "DONOTCHASE":        "detail.unmapped",
         
         # 20-27. Tier 2 (Clinic Group - Multi-Level Organizational Hierarchy)
         "TIER2IDTYPE":       "detail.unmapped",
-        "TIER2ID":          "detail.nm1[entity_identifier_code='85'].(billing_provider_id ? billing_provider_id : identifier)",
-        "TIER2DESC":        "detail.nm1[entity_identifier_code='85'].(billing_provider_name ? billing_provider_name : name)",
-        "TIER2ADDRESS1":    "detail.n3.billing_provider_address_line_1",
+        "TIER2ID":          "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='2'].identifier ? detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='2'].identifier : detail.nm1[entity_identifier_code='85'].billing_provider_id",
+        "TIER2DESC":        "detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='2'].name ? detail.nm1[entity_identifier_code='1P' and entity_type_qualifier='2'].name : detail.nm1[entity_identifier_code='85'].billing_provider_name",
+        "TIER2ADDRESS1":    "detail.n3[0].(billing_provider_address_line_1 ? billing_provider_address_line_1 : address_line_1)",
         "TIER2ADDRESS2":    "detail.unmapped",
-        "TIER2CITY":        "detail.n4.billing_provider_city",
-        "TIER2STATE":       "detail.n4.billing_provider_state",
-        "TIER2ZIP":         "detail.n4.billing_provider_zip_code",
+        "TIER2CITY":        "detail.n4[0].(billing_provider_city ? billing_provider_city : city)",
+        "TIER2STATE":       "detail.n4[0].(billing_provider_state ? billing_provider_state : state)",
+        "TIER2ZIP":         "detail.n4[0].(billing_provider_zip_code ? billing_provider_zip_code : zip_code)",
         
         # 28-35. Tier 3 (Health System - Populated via reference table join in Silver)
         "TIER3IDTYPE":       "detail.unmapped",
