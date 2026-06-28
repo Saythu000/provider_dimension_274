@@ -162,7 +162,48 @@ Below is the definition of all **46 columns** processed in the Bronze and Silver
 
 ---
 
-## 5. EDI 274 Multi-Level Organizational Hierarchy Structure
+## 5. EDI 274 Envelope & Segment Reference Guide
+
+Healthcare directory files contain structural envelope segments to bundle data safely, followed by transaction segments that map out the provider networks.
+
+### 🌐 The Envelope Components (Universal Wrappers)
+These segments are required for all EDI files, not just 274. They act like layers of an envelope to bundle the data safely between trading partners.
+* **ISA (Interchange Control Header)**: The absolute outer envelope. It contains the sender ID, receiver ID, date, time, and security passwords. Think of it as the physical delivery box.
+* **GS (Functional Group Header)**: The inner envelope that groups similar files together. In this file, it contains the code `HR`, which tells the parsing system: *"Everything inside this group is a Provider Information (274) file."*
+* **GE (Functional Group Trailer)**: Closes out the GS inner envelope and contains a count of the transaction sets inside.
+* **IEA (Interchange Control Trailer)**: Closes out the entire ISA outer box and verifies that no data was lost during transfer.
+
+---
+
+### 📄 The Transaction Specifications (Specific to EDI 274)
+These segments build the internal structure, hierarchies, and specific medical credentials of the provider network.
+
+| Segment ID | Segment Name | What it Specifies in the EDI 274 File |
+|---|---|---|
+| **ST** | Transaction Set Header | Marks the start of the actual 274 data layout and defines the specific HIPAA regulatory sub-version (e.g., `005010X292`). |
+| **BHT** | Beginning of Hierarchical Transaction | Sets the operational purpose of the file (e.g., whether this is an original data load, an update, or a retransmission). |
+| **HL** | Hierarchical Level | The core engine of the 274. It establishes the parent-child relationships that connect the Insurance Payer $\rightarrow$ Hospital Facility $\rightarrow$ Individual Doctor. |
+| **NM1** | Individual or Organizational Name | Transmits the literal name of the entity in that loop (e.g., "Aetna", "Johns Hopkins Hospital", or "John Doe"). |
+| **PER** | Administrative Communications Contact | Contains phone numbers, emails, and fax numbers for specific departments or personnel. |
+| **N3** | Address Information | The street-level address lines for the practice locations or facilities. |
+| **N4** | Geographic Location | The city, state, zip code, and country data for the physical location. |
+| **REF** | Reference Information | Transmits critical legal identifiers like State License Numbers, Medicaid IDs, or Federal Tax IDs (EIN). |
+| **PRV** | Provider Specialty / Taxonomy | Contains the healthcare provider taxonomy codes detailing their medical specialty (e.g., General Practice vs. Cardiology). |
+| **DMG** | Demographic Information | Specific individual traits of a human provider, such as Date of Birth and Gender. |
+| **LUI** | Language Indicator | Specifies languages spoken by the doctor or supported at the clinic location. |
+| **HSD** | Health Care Delivery | Conveys scheduling parameters (e.g., open hours, days available, or whether they are taking new patients). |
+| **TPB** | Third-Party Benefit | Explicitly defines which commercial insurance plans, HMO networks, or PPO products this doctor participates in. |
+| **N1** | Name | Defines external parent companies, joint ventures, or Independent Physician Associations (IPAs) the doctor belongs to. |
+| **ACT** | Account Cross-Reference Number | Tracks contracts, system account groupings, or vendor control numbers between platforms. |
+| **NX1** | Real Estate / Property Location Pointer | A structural marker that says, *"The segments immediately following this specify traits for this specific branch office location."* |
+| **EDU** | Educational Background | Identifies the medical school attended, degrees earned (MD, DO), and training credentials. |
+| **DTP** | Date or Time Period | Tracks critical dates associated with other loops, such as Medical School Graduation Date or Board Certification Effective Date. |
+| **LCC** | Licensing and Board Certification | Transmits official board certification statuses (e.g., American Board of Internal Medicine). |
+| **SE** | Transaction Set Trailer | Marks the end of the 274 data segment array and includes a line count to verify file integrity. |
+
+---
+
+## 6. EDI 274 Multi-Level Organizational Hierarchy Structure
 
 The EDI 274 format uses **Hierarchical Level (HL) segments** to represent organizational relationships. The `HL` segment defines the structure using:
 * `HL01` (Hierarchical ID)
@@ -234,7 +275,7 @@ PRV*PE*PXC*207Q00000X~                        <-- Doctor Taxonomy/Specialty
 
 ---
 
-## 6. How to Test in Databricks
+## 7. How to Test in Databricks
 
 1. In Databricks, pull the latest commits from the remote branch.
 2. Run the **`ddl_executor`** notebook to create schemas and tables under catalog `274`.
