@@ -6,69 +6,68 @@ from pathlib import Path
 # Setup workspace environment paths
 file_dir = Path(__file__).resolve().parent
 root_dir = file_dir.parent.parent
-print("root directory: ", root_dir)
-
 sys.path.append(str(root_dir))
 
-from Shared.EDIProcessing.ediprocessing import EDIProcessor
-from Shared.EDIProcessing.csvconverter import CSVConverter
-from DimProvider.EDIProcessing.mapper import CSVSchemaMapper
+from Shared.EDIProcessing import EDIProcessor, CSVConverter
+from DimProvider.EDIProcessing.mapper import Mapper
 
+def move_file(src: Path, dest_dir: Path) -> Path:
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_file = dest_dir / src.name
+    if dest_file.exists():
+        dest_file.unlink()
+    shutil.move(str(src), str(dest_file))
+    return dest_file
+
+def process_single_file(pending_file: Path, base_source_dir: Path):
+    active_file = pending_file
+    try:
+        if not active_file.exists():
+            raise FileNotFoundError(f"Input file missing: {active_file}")
+        
+        # Pending -> Inprogress
+        active_file = move_file(active_file, base_source_dir / "inprogress")
+
+        # Pipeline Execution
+        structured_json = EDIProcessor().parse(str(active_file))
+
+        # Extract ClientID and FileID
+        interchange = structured_json.get('interchange', {})
+        client_id = interchange.get('sender_id', '').strip()
+        file_id = interchange.get('control_number', '').strip()
+        print(f"Extracted ClientID: {client_id}, FileID: {file_id}")
+        
+        mapper_data = Mapper().map_provider(structured_json)
+        
+        # Save output CSV
+        output_file = root_dir / f"temp/274/{active_file.stem}.csv"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        CSVConverter().converter(mapper_data, str(output_file))
+        
+        # Inprogress -> Processed
+        move_file(active_file, base_source_dir / "processed")
+        print(f"Successfully processed: {active_file.name}")
+        
+    except Exception as e:
+        print(f"Failed processing {active_file.name}: {e}")
+        if active_file.exists():
+            move_file(active_file, base_source_dir / "failed")
 
 def main():
-    mapper = CSVSchemaMapper()
-    schemas_dir = str(root_dir / "DimProvider/Bronze/Schema")
+    base_source_dir = root_dir / "source/274"
+    pending_dir = base_source_dir / "pending"
+    
+    print(f"Looking for files in: {pending_dir}")
+    
+    if not pending_dir.exists():
+        print(f"Pending directory does not exist!")
+        return
 
-    # Pipeline: Directory (EDI 274) -> provider_hierarchy.csv
-    source_274  = root_dir / "source/274"
-    pending_274 = source_274 / "pending/provider_hierarchy1.txt"
+    pending_files = [f for f in pending_dir.iterdir() if f.is_file() and not f.name.startswith('.')]
+    print(f"Found {len(pending_files)} file(s) to process.")
 
-    # Fallback: check for any .txt file if the standard filename does not exist
-    if not pending_274.exists():
-        pending_files = list((source_274 / "pending").glob("*.txt"))
-        if pending_files:
-            pending_274 = pending_files[0]
-
-    output_274  = root_dir / "temp/274/provider_hierarchy1.csv"
-
-    print("\n=== Processing Directory (EDI 274) ===")
-    try:
-        if not pending_274.exists():
-            print(f"No pending 274 file found at: {pending_274}. Skipping.")
-        else:
-            inprogress_dir = source_274 / "inprogress"
-            processed_dir  = source_274 / "processed"
-            failed_dir     = source_274 / "failed"
-            active_file    = pending_274
-
-            # Transition: Pending -> Inprogress
-            os.makedirs(inprogress_dir, exist_ok=True)
-            inprogress_file = inprogress_dir / active_file.name
-            print(f"Moving file to execution phase: {inprogress_file}")
-            shutil.move(str(active_file), str(inprogress_file))
-            active_file = inprogress_file
-
-            # Parse -> Map -> Convert
-            structured_274     = EDIProcessor().parse(str(active_file))
-            hierarchy_records  = mapper.map_hierarchy(structured_274)
-            os.makedirs(output_274.parent, exist_ok=True)
-            
-            CSVConverter(schemas_dir=schemas_dir).convert_hierarchy(
-                mapped_hierarchy=hierarchy_records,
-                output_csv_path=str(output_274)
-            )
-            print(f"Directory processing complete. Output: {output_274}")
-
-            # Transition: Inprogress -> Processed
-            os.makedirs(processed_dir, exist_ok=True)
-            processed_file = processed_dir / active_file.name
-            shutil.move(str(active_file), str(processed_file))
-            print(f"Moving file to completion phase: {processed_file}")
-
-    except Exception as e:
-        print(f"Directory (274) pipeline failed: {e}")
-        raise e
-
+    for file_path in pending_files:
+        process_single_file(file_path, base_source_dir)
 
 if __name__ == "__main__":
     main()

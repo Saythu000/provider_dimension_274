@@ -1,2 +1,2 @@
-from .mapper import CSVSchemaMapper
-from .mappings import HIERARCHY_PROVIDER_MAPPING_DEFINITION
+from .mapper import Mapper
+from .mappings import MAPPINGS
